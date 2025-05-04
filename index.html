@@ -125,9 +125,18 @@
 <script>
   const formURL = "YOUR_WEB_APP_URL_HERE"; // Replace this with your submission endpoint
   const ALLOWED_IP = "154.159.237.15";
+  
+  // List of users and their credentials
+  const users = [
+    { username: "muhuyi", password: "12345678", accessLevel: "restricted", submitted: false },
+    { username: "jack", password: "01234567", accessLevel: "exempt", submitted: false },
+    { username: "user1", password: "password1", accessLevel: "restricted", submitted: false },
+    { username: "user2", password: "password2", accessLevel: "restricted", submitted: false },
+    { username: "user3", password: "password3", accessLevel: "restricted", submitted: false }
+  ];
 
   let userIP = null;
-  let userAccessLevel = "restricted";
+  let currentUser = null;
 
   const modal = document.getElementById("modal");
   const modalMsg = document.getElementById("modalMessage");
@@ -145,17 +154,17 @@
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
 
-    if (username === "jack" && password === "01234567") {
-      userAccessLevel = "exempt";
-    } else if (username === "muhuyi" && password === "12345678") {
-      userAccessLevel = "restricted";
-    } else {
+    currentUser = users.find(user => user.username === username && user.password === password);
+
+    if (!currentUser) {
       showModal("Access Denied. Invalid credentials.");
       return;
     }
 
-    // Reset any previous ban so muhuyi gets a fresh attempt
-    localStorage.removeItem("banned");
+    if (currentUser.submitted) {
+      showModal("You have already submitted your exam. Access denied.");
+      return;
+    }
 
     fetchUserIP();
   }
@@ -175,7 +184,7 @@
 
   function initExamSecurity() {
     const isIPExempt = userIP === ALLOWED_IP;
-    const isExempt = userAccessLevel === "exempt" || isIPExempt;
+    const isExempt = currentUser.accessLevel === "exempt" || isIPExempt;
 
     if (localStorage.getItem("banned") === "true" && !isExempt) {
       showModal("Access Denied. You are not allowed to continue the exam.");
@@ -198,6 +207,7 @@
         if (document.hidden) {
           localStorage.setItem("banned", "true");
           showModal("You switched tabs. Exam session terminated.");
+          submitAnswer();
         }
       });
     } else {
@@ -213,10 +223,6 @@
       timerDisplay.textContent = `Time Left: ${minutes}:${seconds.toString().padStart(2, '0')}`;
       if (timeLeft <= 0) {
         clearInterval(timerInterval);
-        if (!isExempt) {
-          localStorage.setItem("banned", "true");
-          showModal("Time is up. Your exam is being submitted.");
-        }
         submitAnswer();
       }
       timeLeft--;
@@ -237,7 +243,9 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `name=${encodeURIComponent(name)}&answer=${encodeURIComponent(answer)}`
     }).then(() => {
-      showModal("Your answer has been submitted successfully.");
+      currentUser.submitted = true;
+      localStorage.setItem("banned", "true");
+      showModal("Your answer has been submitted successfully. You will no longer have access to the exam.");
       setTimeout(() => location.reload(), 3000);
     }).catch(() => {
       showModal("Submission failed. Please check your internet connection.");
