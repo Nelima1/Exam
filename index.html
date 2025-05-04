@@ -9,47 +9,49 @@
     html, body {
       width: 100%;
       height: 100%;
-      overflow: hidden;
       font-family: Arial, sans-serif;
       background: #f4f4f4;
     }
+    #loginContainer, #examContainer {
+      padding: 40px;
+      max-width: 800px;
+      margin: auto;
+    }
+    #loginContainer input {
+      padding: 10px;
+      font-size: 16px;
+      width: 100%;
+      margin-bottom: 15px;
+    }
     #examContainer {
-      display: flex;
+      display: none;
       flex-direction: column;
-      justify-content: start;
-      align-items: center;
-      padding: 20px;
-      height: 100%;
     }
     #timer {
       font-size: 20px;
       font-weight: bold;
       color: red;
-      margin: 10px;
+      margin: 10px 0;
     }
     #question {
       font-size: 18px;
       margin-bottom: 10px;
-      text-align: center;
     }
     #name {
       margin-bottom: 15px;
       padding: 10px;
       font-size: 16px;
       width: 100%;
-      max-width: 500px;
     }
     #answer {
-      flex-grow: 1;
       width: 100%;
+      height: 400px;
       padding: 15px;
       font-size: 16px;
-      resize: none;
+      resize: vertical;
       border: 1px solid #ccc;
       border-radius: 8px;
       margin-bottom: 20px;
-      max-width: 800px;
-      height: 50vh;
     }
     button {
       padding: 10px 20px;
@@ -63,9 +65,8 @@
       width: 200px;
       border: 2px solid #000;
       margin: 15px auto;
+      display: block;
     }
-
-    /* Modal Style */
     .modal {
       position: fixed;
       top: 0; left: 0;
@@ -90,6 +91,15 @@
 </head>
 <body>
 
+<!-- Login Form -->
+<div id="loginContainer" style="display: flex; flex-direction: column; gap: 15px;">
+  <h2>Login to Start Exam</h2>
+  <input type="text" id="username" placeholder="Username" required>
+  <input type="password" id="password" placeholder="Password" required>
+  <button onclick="validateLogin()">Login</button>
+</div>
+
+<!-- Exam Interface -->
 <div id="examContainer">
   <div id="timer">Loading Timer...</div>
   <input type="text" id="name" placeholder="Enter your full name" required>
@@ -101,7 +111,6 @@
 
   <textarea id="answer" placeholder="Type your full response here..." required></textarea>
   <button onclick="submitAnswer()">Submit Exam</button>
-
   <video id="video" autoplay muted></video>
 </div>
 
@@ -114,9 +123,11 @@
 </div>
 
 <script>
-  const formURL = "YOUR_WEB_APP_URL_HERE"; // Replace this with your Apps Script Web App URL
+  const formURL = "YOUR_WEB_APP_URL_HERE"; // Replace this with your submission endpoint
   const ALLOWED_IP = "154.159.237.15";
+
   let userIP = null;
+  let userAccessLevel = "restricted";
 
   const modal = document.getElementById("modal");
   const modalMsg = document.getElementById("modalMessage");
@@ -130,11 +141,27 @@
     modal.style.display = "none";
   }
 
+  function validateLogin() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+
+    if (username === "jack" && password === "01234567") {
+      userAccessLevel = "exempt";
+    } else if (username === "muhuyi" && password === "12345678") {
+      userAccessLevel = "restricted";
+    } else {
+      showModal("Access Denied. Invalid credentials.");
+      return;
+    }
+
+    fetchUserIP();
+  }
+
   function fetchUserIP() {
     fetch("https://api.ipify.org?format=json")
       .then(res => res.json())
       .then(data => {
-        userIP = data.ip;
+        userIP = (data.ip || "").trim();
         initExamSecurity();
       })
       .catch(() => {
@@ -144,33 +171,34 @@
   }
 
   function initExamSecurity() {
-    // Don't apply lockout to allowed IP
-    const isExempt = userIP === ALLOWED_IP;
+    const isIPExempt = userIP === ALLOWED_IP;
+    const isExempt = userAccessLevel === "exempt" || isIPExempt;
 
-    // Webcam
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        document.getElementById("video").srcObject = stream;
-      })
-      .catch(() => {
-        showModal("Camera access is required to proceed with the exam.");
-      });
+    if (localStorage.getItem("banned") === "true" && !isExempt) {
+      showModal("Access Denied. You are not allowed to continue the exam.");
+      return;
+    }
 
-    // Tab switch blocking
+    document.getElementById("loginContainer").style.display = "none";
+    document.getElementById("examContainer").style.display = "block";
+
     if (!isExempt) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          document.getElementById("video").srcObject = stream;
+        })
+        .catch(() => {
+          showModal("Camera access is required to proceed with the exam.");
+        });
+
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
           localStorage.setItem("banned", "true");
           showModal("You switched tabs. Exam session terminated.");
         }
       });
-    }
-
-    // Timer
-    if (!isExempt && localStorage.getItem("banned") === "true") {
-      showModal("Access Denied. You are not allowed to continue the exam.");
-      document.getElementById("examContainer").style.display = "none";
-      return;
+    } else {
+      document.getElementById("video").style.display = "none";
     }
 
     let timeLeft = 60 * 60;
@@ -212,9 +240,6 @@
       showModal("Submission failed. Please check your internet connection.");
     });
   }
-
-  fetchUserIP(); // Initialize security check
-
 </script>
 
 </body>
