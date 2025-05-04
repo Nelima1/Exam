@@ -130,7 +130,7 @@
   const users = [
     { username: "muhuyi", password: "12345678", accessLevel: "restricted", submitted: false },
     { username: "jack", password: "01234567", accessLevel: "exempt", submitted: false },
-    { username: "tabby", password: "1962", accessLevel: "restricted", submitted: false },
+    { username: "user1", password: "password1", accessLevel: "restricted", submitted: false },
     { username: "user2", password: "password2", accessLevel: "restricted", submitted: false },
     { username: "user3", password: "password3", accessLevel: "restricted", submitted: false }
   ];
@@ -191,6 +191,7 @@
       return;
     }
 
+    // Ensure the exam screen is shown for users that pass the checks
     document.getElementById("loginContainer").style.display = "none";
     document.getElementById("examContainer").style.display = "block";
 
@@ -214,6 +215,7 @@
       document.getElementById("video").style.display = "none";
     }
 
+    // Timer setup (one hour countdown)
     let timeLeft = 60 * 60;
     const timerDisplay = document.getElementById("timer");
 
