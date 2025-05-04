@@ -111,7 +111,7 @@
 
   <textarea id="answer" placeholder="Type your full response here..." required></textarea>
   <button onclick="submitAnswer()">Submit Exam</button>
-  <video id="video" autoplay muted></video>
+  <video id="video" autoplay muted playsinline></video>
 </div>
 
 <!-- Modal Popup -->
@@ -154,6 +154,9 @@
       return;
     }
 
+    // Reset any previous ban so muhuyi gets a fresh attempt
+    localStorage.removeItem("banned");
+
     fetchUserIP();
   }
 
@@ -183,13 +186,13 @@
     document.getElementById("examContainer").style.display = "block";
 
     if (!isExempt) {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          document.getElementById("video").srcObject = stream;
-        })
-        .catch(() => {
-          showModal("Camera access is required to proceed with the exam.");
-        });
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" }
+      }).then(stream => {
+        document.getElementById("video").srcObject = stream;
+      }).catch(() => {
+        showModal("Camera access is required to proceed with the exam.");
+      });
 
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
